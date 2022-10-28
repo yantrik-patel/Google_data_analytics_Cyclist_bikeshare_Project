@@ -1,0 +1,203 @@
+---
+title: "Clyclist Bike Share 2019 Case Study"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+Mission Statement
+     
+     The Cyclist, a bike sharing company wants to find out the main differences in behaviour between their two types of users, the “Customers” who pays for each ride and the "Subscriber" who are annual member and pays a yearly subscription to the service. 
+     
+PHASE 1 : ASK
+
+
+Key objectives:
+
+
+1. Identify the business task:
+    
+    The company wants to improve their earnings reaching out to their “casual” riders. The team needs to understand how annual members and casual riders differ and how company can influence casual riders to buy annual subscription through digital media marketing. so, the task is "What could motivate the “casual” users to change to an annual subscription based on their behavior?"
+
+2. Consider Stakeholders:
+
+    Here the main stakeholders are the director of marketing and my manager Lily Moreno and the Cyclistic executive team. The secondary stakeholder is Cyclistic marketing analytics team.
+    
+PHASE 2: PREPARE
+
+
+Key Objectives:
+
+
+1. Determine the credibility of the data:
+
+    The data is public data from a bike sharing company. It starts from the year 2013 until September 2022, as the files are sometimes organized by quarter, or month, or the whole year and their names vary a lot, the naming conventions has to be double checked. The naming of the columns also changes and there are some columns added and deleted over the years. Nevertheless, the data seems to be in good condition and its first hand data collected by the company itself with lots of entries and with lots of useful data.
+
+2. Sort and filter the data:
+
+    For this analysis I'm going to focus on the year 2019(Q1, Q2, Q3 and Q4) period as data seems more consistent and in good amount. 
+    
+    
+#Let's add all necessary libraries
+
+```{r}
+library("tidyverse")
+library("lubridate")
+library("janitor")
+library("ggplot2")
+```
+
+Importing all CSV files
+
+```{r}
+data2019_Q1<- read.csv("C:/Users/yantr/Desktop/cyclist_2019/Divvy_Trips_2019_Q1.csv",header=TRUE,sep=",")
+data2019_Q2<- read.csv("C:/Users/yantr/Desktop/cyclist_2019/Divvy_Trips_2019_Q2.csv",header=TRUE,sep=",")
+data2019_Q3<- read.csv("C:/Users/yantr/Desktop/cyclist_2019/Divvy_Trips_2019_Q3.csv",header=TRUE,sep=",")
+data2019_Q4<- read.csv("C:/Users/yantr/Desktop/cyclist_2019/Divvy_Trips_2019_Q4.csv",header=TRUE,sep=",")
+
+```
+
+we need same column name in all data frame, all dataframe double checked and run below codes
+
+```{r}
+colnames(data2019_Q2) <- colnames(data2019_Q1)
+colnames(data2019_Q3) <- colnames(data2019_Q1)
+colnames(data2019_Q4) <- colnames(data2019_Q1)
+```
+Merging all data frames into one
+```{r}
+data2019_merged<-rbind(data2019_Q1,data2019_Q2,data2019_Q3,data2019_Q4)
+```
+
+
+PHASE 3: PROCESS
+
+
+Key Objective
+
+Cleaning and preparing data for analysis:
+
+    Now that we have all the data in one place, we can start to clean the data. After checking data type of all columns, we need to change data type of some of the columns. Need to drop couple of columns. Adding some of the columns so we can analyze and visualize them easily. I have mentioned step by step process about cleaning and preparing data.
+    
+
+
+changing data type so we can process them later easily
+
+```{r}
+data2019_merged$tripduration <- as.integer(data2019_merged$tripduration)
+data2019_merged$trip_id <- as.integer(data2019_merged$trip_id)
+data2019_merged$bikeid <- as.character(data2019_merged$bikeid)
+data2019_merged$from_station_id <- as.character(data2019_merged$from_station_id)
+data2019_merged$to_station_id <- as.character(data2019_merged$to_station_id)
+```
+
+we need to calculate trip_duration as we have NA values in available data
+
+```{r}
+data2019_merged$start_time<-strptime(data2019_merged$start_time, "%Y-%m-%d %H:%M:%S")
+data2019_merged$end_time<-strptime(data2019_merged$end_time, "%Y-%m-%d %H:%M:%S")
+data2019_merged$trip_duration<- as.numeric(difftime(data2019_merged$end_time,data2019_merged$start_time))
+```
+
+Removing 'birthyear' and 'tripduration' column as they contains NA values and we have already calculated new 'trip_duration' column.
+
+```{r}
+data2019_merged<-select(data2019_merged,-birthyear)
+data2019_merged<-select(data2019_merged,-tripduration)
+```
+
+Removing rows having negative trip_duration
+
+```{r}
+data2019_merged<-subset(data2019_merged, trip_duration > 0)
+```
+
+Creating new columns of Month,day,year and weekday
+
+```{r}
+data2019_merged$date <- as.Date(data2019_merged$start_time)
+data2019_merged$month <- format(as.Date(data2019_merged$date), "%B")
+data2019_merged$day <- format(as.Date(data2019_merged$date), "%d")
+data2019_merged$year <- format(as.Date(data2019_merged$date), "%Y")
+data2019_merged$day_of_week <- format(as.Date(data2019_merged$date), "%A")
+```
+
+Setting up the Weekday and Month order
+
+```{r}
+data2019_merged$day_of_week <- ordered(data2019_merged$day_of_week, levels=c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday","Sunday"))
+data2019_merged$month <- ordered(data2019_merged$month, levels=c("January", "February", "March", "April", "May", "June","July","August","September","October","November","December"))
+```
+PHASE 4: ANALYZE
+
+
+Key Objective
+
+
+Identify trends and relationships
+
+    We now have all required data available, we can start analysis and visualize the data mainly for the category of Casual Customer and Annual Member.
+    
+```{r}
+userType_means <- data2019_merged %>% 
+  group_by(usertype) %>% summarise(mean_time = mean(trip_duration))
+options(repr.plot.width =15, repr.plot.height =5)
+ggplot(userType_means) + geom_col(mapping=aes(x=usertype,y=mean_time,fill = usertype))+
+labs(title="Average Trip Duration")+
+theme(plot.title = element_text(size = 30))
+```
+
+Analysis:
+
+Above chart shows that the average usage time of Casual riders are more compared to Annual Subscriber member. This shows casual riders are using bikes for leisure time while subscriber is using bikes for daily commuting. The manager is right about seeing good opportunity to make casual rider subscribe for annual plan.
+
+```{r}
+number_of_rides<-data2019_merged %>% 
+  group_by(month,usertype) %>% 
+  summarize(total_rides = n_distinct(trip_id))
+options(repr.plot.width =17, repr.plot.height =8)
+ggplot(number_of_rides) + geom_col(mapping=aes(x=month,y=total_rides,fill=usertype))+
+theme(axis.text.x = element_text(angle = 45),plot.title = element_text(size = 30),plot.subtitle = element_text(size = 18))+
+labs(title="Total Rides taken", subtitle= "Total number of distinct rides taken by all customers")
+```
+
+Analysis:
+
+We can see the business starts peaking from April till October. Also we can see sharp increase in rides of casual customer. Management can adjust the price of rides accordingly. Quarter wise Ride Rates and discount offer can be advertised to attract more customer or converting the existing customer. Seasonal Passes can be issued to interested customers.
+
+```{r}
+ggplot(data=data2019_merged)+
+geom_bar(mapping = aes(x=day_of_week,fill = usertype))+
+scale_fill_manual(values = c("Customer" = "#746F72","Subscriber" = "#FFB100"))+
+labs(title="Total Transactions",subtitle="Daywise total transactions took place")+
+theme(plot.title = element_text(size = 30),
+        plot.subtitle = element_text(size = 18)
+        )
+```
+
+Analysis:
+
+Above chart shows, annual subscriber are cosistent user, same can be said for casual riders during the week days. But casual members turns up in good numbers on weekend. This again shows casual riders uses bike for leisure time. Our managment can come up with weekend ride passes to increase the customer reach.
+
+PHASE 5: SHARE
+
+
+Key Objective
+
+Present your finding:
+
+    From above analysis and viz, we can conclude that casual member uses bike for more time on weekend. Also we have peak season data.
+    I will share these finding with management and I would suggest that in order to convert the casual to the annual users it will be interesting to focus the messages on leisure aspect of the service and may offer some kind of promotion related to weekends and seasonal offers.
+
+
+
+
+
+
+
+
+
+
